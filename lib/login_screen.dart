@@ -15,12 +15,17 @@ class _LoginScreenState extends State<LoginScreen> {
   final _auth = FirebaseAuth.instance;
 
   void _login() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+    // 1. Validasi jika ada ruangan kosong
+    if (_emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in email and password')),
+        const SnackBar(
+          content: Text('Please fill in both email and password fields.'),
+          backgroundColor: Colors.redAccent,
+        ),
       );
-      return;
+      return; 
     }
+    
     try {
       await _auth.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
@@ -32,10 +37,32 @@ class _LoginScreenState extends State<LoginScreen> {
           MaterialPageRoute(builder: (context) => const TaskListScreen()),
         );
       }
+    } on FirebaseAuthException catch (e) {
+      // 2. Menapis ralat Firebase supaya keluar dalam ayat yang mudah difahami
+      String errorMessage = 'An error occurred. Please try again.';
+      
+      if (e.code == 'invalid-credential' || e.code == 'user-not-found' || e.code == 'wrong-password') {
+        errorMessage = 'Invalid email or password. Please check your credentials.';
+      } else if (e.code == 'invalid-email') {
+        errorMessage = 'The email address format is invalid.';
+      } else if (e.code == 'user-disabled') {
+        errorMessage = 'This user account has been disabled.';
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.redAccent),
+        );
+      }
     }
   }
 
@@ -59,7 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Login to manage your daily tasks seamlessly',
+                'Login to manage your tasks seamlessly',
                 style: TextStyle(color: Colors.grey[600]),
                 textAlign: TextAlign.center,
               ),

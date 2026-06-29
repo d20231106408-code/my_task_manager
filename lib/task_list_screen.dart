@@ -20,16 +20,45 @@ class _TaskListScreenState extends State<TaskListScreen> {
     }
   }
 
-  void _deleteTask(String docId) async {
-    await _firestore.collection('tasks').doc(docId).delete();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Task deleted successfully')),
-      );
-    }
+  // Fungsi Pop-up Pengesahan sebelum padam
+  void _confirmDelete(String docId) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text(
+            'Delete Task',
+            style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF37474F)),
+          ),
+          content: const Text('Are you sure you want to delete this task? This action cannot be undone.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context), // Tutup pop-up jika batal
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context); // Tutup pop-up amaran
+                await _firestore.collection('tasks').doc(docId).delete(); // Padam dari Firestore
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Task deleted successfully'),
+                      backgroundColor: Color(0xFF455A64),
+                    ),
+                  );
+                }
+              },
+              child: const Text('Delete', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
   }
 
-  // Fungsi Pop-up untuk ADD atau EDIT Task
+  // Fungsi Pop-up Bottom Sheet untuk ADD atau EDIT Task
   void _showTaskBottomSheet({String? docId, String? initialTitle, String? initialDesc}) {
     final titleController = TextEditingController(text: initialTitle);
     final descController = TextEditingController(text: initialDesc);
@@ -103,7 +132,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
                     }
 
                     if (context.mounted) {
-                      Navigator.pop(context); // Tutup pop-up
+                      Navigator.pop(context); // Tutup pop-up bottom sheet
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(isEdit ? 'Task updated successfully!' : 'Task saved successfully!'),
@@ -148,7 +177,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
 
           final docs = snapshot.data?.docs ?? [];
 
-          // 1. Jika tugasan kosong (No tasks yet)
+          // Paparan jika tugasan kosong (No tasks yet)
           if (docs.isEmpty) {
             return Center(
               child: Column(
@@ -170,7 +199,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
             );
           }
 
-          // Paparan List yang Aesthetic
+          // Paparan List Tugasan
           return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: docs.length,
@@ -218,7 +247,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                        onPressed: () => _deleteTask(docId),
+                        onPressed: () => _confirmDelete(docId), // Memanggil fungsi pop-up pengesahan yang baru
                       ),
                     ],
                   ),
@@ -232,7 +261,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
         backgroundColor: const Color(0xFF78909C),
         foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        onPressed: () => _showTaskBottomSheet(), // Panggil pop-up tambah task kosong
+        onPressed: () => _showTaskBottomSheet(),
         child: const Icon(Icons.add),
       ),
     );
